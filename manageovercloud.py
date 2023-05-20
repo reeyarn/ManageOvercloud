@@ -66,10 +66,7 @@ class ManageOvercloud(object):
         self.sync_if_missing_file = sync_if_missing_file
         self.dropbox_app_key = dropbox_app_key
         self.dropbox_app_secret = dropbox_app_secret
-        #if not 'dbx' in globals():
-        #    self.use_dropbox = False
-        #    if use_dropbox:
-        #        raise Exception("use_dropbox = True but no dbx instance is assigned")
+
         if self.use_dropbox:
             access_token = self.get_existing_dropbox_token()
             dbx = self.connect_dropbox(access_token)
@@ -77,6 +74,7 @@ class ManageOvercloud(object):
                 self.use_dropbox = False; 
             else:
                 self.dbx = dbx
+                
         logger.info(f"Finished init. Dbx Cloud status {self.use_dropbox}")
 
     @staticmethod
@@ -101,13 +99,11 @@ class ManageOvercloud(object):
         if self.use_dropbox:
             cloud_full_path = self.cloud_prefix + rel_path    
             cloud_full_path = self._remove_doubleslash_endslash(cloud_full_path)
-            #try: 
-            #    metadata = dbx.files_get_metadata(cloud_full_path, include_media_info=True)
             try: 
                 self.dbx.files_create_folder_v2(cloud_full_path)
                 logger.info(f"Make dir in dbx-cloud filesystem: {cloud_full_path}")
             except dropbox.exceptions.ApiError as e:
-                logging.error(f"Failed to create directory {cloud_full_path}, {str(e)}")
+                logger.error(f"Failed to create directory {cloud_full_path}, {str(e)}")
                     
     def rename(self, source, destination):
         """
@@ -146,7 +142,7 @@ class ManageOvercloud(object):
         rel_path = '/text/edgar/full-index/1998-QTR4.csv.gz'
         rel_path='/text/edgar/by-index/'
         """
-        logging.critical("Should not have called LocalCloud.path_exists(). Call LocalCloud.path_isfile() or LocalCloud.path_isdir() instead")
+        logger.critical("Should not have called LocalCloud.path_exists(). Call LocalCloud.path_isfile() or LocalCloud.path_isdir() instead")
         return_value = False
         if self.use_localfs:
             local_full_path=self.local_prefix + rel_path
@@ -183,7 +179,6 @@ class ManageOvercloud(object):
         if self.sync_if_missing_file or not local_return_value:
             if self.use_dropbox:
                 try:
-                    #dbx_return_value = dbx.files_get_metadata(cloud_full_path)
                     metadata = self.dbx.files_get_metadata(cloud_full_path, include_media_info=True)
                     if  isinstance(metadata, dropbox.files.FileMetadata):
                         dbx_return_value = True
@@ -416,7 +411,7 @@ class ManageOvercloud(object):
             #logger.info(f"Account information: {account}")
         except dropbox.exceptions.AuthError as e:
             if retrying_already:
-                logging.critical("CANNOT ACCESS DROPBOX")
+                logger.critical("CANNOT ACCESS DROPBOX")
                 dbx = None
             else:    
                 dbx = self.connect_dropbox(access_token = None, retrying_already=True)
