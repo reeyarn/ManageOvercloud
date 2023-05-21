@@ -279,9 +279,9 @@ class ManageOvercloud(object):
                 except:
                     logger.debug(f"Dbx Cloud path_dir checking FAILED: {cloud_full_path} ")    
         if check_both or self.sync_if_missing_file:
-            return_value = return_value and bool(dbx_return_value)
+            return_value = local_return_value and bool(dbx_return_value)
         else:    
-            return_value = return_value or bool(dbx_return_value)
+            return_value = local_return_value or bool(dbx_return_value)
         return return_value
     
     def dbx_upload(self, f: bytes, dbx_full_path):
