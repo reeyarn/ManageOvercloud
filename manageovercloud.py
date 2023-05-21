@@ -371,9 +371,10 @@ class ManageOvercloud(object):
         return_value = bytes()
         bytes_data, txt = bytes(), str()
         if self.use_localfs:
-            with open(self.local_prefix + rel_path, 'rb') as file:
-                bytes_data = file.read()  
-        elif self.use_dropbox :
+            if os.path.isfile(self.local_prefix + rel_path):
+                with open(self.local_prefix + rel_path, 'rb') as file:
+                    bytes_data = file.read()  
+        if note bytes_data and self.use_dropbox :
             dbx_full_path = self._remove_doubleslash_endslash (self.cloud_prefix + rel_path)
             bytes_data = self.dbx_download(dbx_full_path = dbx_full_path)
         else:
