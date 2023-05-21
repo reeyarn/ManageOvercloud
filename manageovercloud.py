@@ -1,7 +1,7 @@
 """
 MIT License 
 Copyright 2023 Reeyarn Li
-VERSION 2023 May
+VERSION 2023 May; 1.0.0520
 
 # DOCUMENTATION
 
@@ -132,7 +132,54 @@ class ManageOvercloud(object):
                     logger.warning("A conflict occurred. The destination already exists, or the source does not exist")
                 else:
                     logger.critical("While trying to rename in Dropbox cloud, Undefined Exception occurred " + str(e))       
-    
+
+    def remove(self, rel_path):
+        return_value, local_return_value, dbx_return_value = None, None, None
+        local_full_path = self.local_prefix + rel_path
+        cloud_full_path = self._remove_doubleslash_endslash(self.cloud_prefix + rel_path)
+        if self.use_localfs:
+            try:
+                os.remove(local_full_path)
+                logger.info(f"Deleted file from local filesystem {local_full_path}")
+                local_return_value = True
+            except OSError as e:
+                logger.info(f"Unable to delete file from local filesystem {local_full_path} " + str(e))
+        else:
+            local_return_value = True        
+        if self.use_dropbox:
+            try: 
+                dbx.files_delete_v2(cloud_full_path)
+                dbx_return_value = True
+            except dropbox.exceptions.ApiError as e:
+                logger.info(f"Unable to delete file from dropbox filesystem {cloud_full_path} " + str(e))
+        else:
+            dbx_return_value = True        
+        return_value = local_return_value and dbx_return_value        
+        return return_value
+                               
+    def listdir(self, rel_path):
+        """
+        Syncing if missing file is not implemented for ManageOvercloud.listdir(); but the returned list is the subset of files that exist on both locations
+        """
+        return_value, local_return_value, dbx_return_value = [], [], []
+        local_full_path = self.local_prefix + rel_path
+        cloud_full_path = self._remove_doubleslash_endslash(self.cloud_prefix + rel_path)
+        if self.use_localfs:
+            local_return_value = os.listdir(local_full_path)
+        if self.sync_if_missing_file or not local_return_value:  
+            if self.use_dropbox:  
+                try:
+                    result = dbx.files_list_folder(cloud_full_path)
+                    dbx_return_value = [entry.name for entry in result.entries]                
+                except Exception as e:
+                    logging.critical("Error listing dropbox folder {cloud_full_path}")    
+        if self.sync_if_missing_file:
+            logger.debug("Syncing if missing file is not implemented for ManageOvercloud.listdir(); but the returned list is the subset of files that exist on both locations")
+            return_value = [folder for folder in local_return_value if folder in dbx_return_value]
+        else:    
+            return_value = local_return_value or dbx_return_value
+        return return_value
+                        
     def path_exists(self, rel_path ):
         """
         DEPRECIATED. 
@@ -312,13 +359,14 @@ class ManageOvercloud(object):
         if not upload_success:
             logger.critical(f"use_localfs = False; Neither can write to dropbox {rel_path}")
 
-    def read(self, rel_path, read_mode = "rt", use_gzip=False):
+    def read(self, rel_path, read_mode = "rb", use_gzip=False):
         """
         write(...)  allows writing to both local storage and dropbox cloud
         but  read() will try reading from local first if allowed; otherwise if allowed read from dropbox
         self = mylc
         rel_path = "/tmp/var1.txt.gz"
         """
+        return_value = bytes()
         bytes_data, txt = bytes(), str()
         if self.use_localfs:
             with open(self.local_prefix + rel_path, 'rb') as file:
@@ -332,11 +380,10 @@ class ManageOvercloud(object):
             decompressed_bytes = gzip.decompress(bytes_data)  
         else: 
             decompressed_bytes = bytes_data
-        if read_mode=="rb":
-            return decompressed_bytes
-        else:
-            txt = decompressed_bytes.decode('utf-8')
-        return txt
+        return_value =  decompressed_bytes
+        if not read_mode=="rb":
+            return_value = decompressed_bytes.decode()
+        return return_value
 
     def sync_file(self, local_rel_path, cloud_rel_path, from_cloud_to_local = False):
         """This method has not been called anywhere?"""
