@@ -247,11 +247,13 @@ class ManageOvercloud(object):
                     cloud_parent_folder = os.path.join(*rel_path.split("/")[:-1])
                     if not self.path_isdir(cloud_parent_folder, check_both=True):
                         self.makedirs(cloud_parent_folder)
-                    with open(local_full_path, "rb") as f:
-                        bytes_data = f.read()
-                        logger.debug(f"""Local file {local_full_path}  existing, but not found in dropbox {cloud_full_path}. With --sync-if-missing-file, Start Uploading local file.""")
-                        self.dbx_upload(bytes_data, cloud_full_path)
-                        logger.info(f"""Local file {local_full_path}  existing, but not found in dropbox {cloud_full_path}. With --sync-if-missing-file, Finished Uploading local file.""")
+                    if local_return_value: 
+                        # if local file exist but not in cloud, read local and upload to dropbox    
+                        with open(local_full_path, "rb") as f:
+                            bytes_data = f.read()
+                            logger.debug(f"""Local file {local_full_path}  existing, but not found in dropbox {cloud_full_path}. With --sync-if-missing-file, Start Uploading local file.""")
+                            self.dbx_upload(bytes_data, cloud_full_path)
+                            logger.info(f"""Local file {local_full_path}  existing, but not found in dropbox {cloud_full_path}. With --sync-if-missing-file, Finished Uploading local file.""")
         if self.sync_if_missing_file:    
             return_value = local_return_value and dbx_return_value
         else:    
